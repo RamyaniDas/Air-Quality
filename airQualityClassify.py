@@ -1,4 +1,4 @@
-# 📌 Step 1: Import Libraries
+#Import Libraries
 import pandas as pd
 
 # Load the dataset
@@ -11,7 +11,7 @@ print("\nFirst 5 rows:\n", df.head())
 
 # ------------------------------------------------------------
 
-# 📌 Step 2: Pivot pollutants into columns
+#Pivot pollutants into columns
 df_pivot = df.pivot_table(
     index=["Country Code", "City", "Location", "Coordinates", "Last Updated"],
     columns="Pollutant",
@@ -23,7 +23,7 @@ print("\nDataset after pivoting:\n", df_pivot.head())
 
 # ------------------------------------------------------------
 
-# 📌 Step 3: Create AQI category based on PM2.5 values
+#Create AQI category based on PM2.5 values
 def categorize_air_quality(pm25):
     if pd.isna(pm25):
         return "Unknown"
@@ -49,6 +49,6 @@ print("\nDataset with AQI Category:\n", df_pivot[["City", "PM2.5", "AQI_Category
 
 # ------------------------------------------------------------
 
-# 📌 Step 4: Save processed dataset
+#Save processed dataset
 df_pivot.to_csv("air_quality_processed.csv", index=False)
-print("\n✅ Preprocessing complete. Saved as 'air_quality_processed.csv'")
+print("\n Preprocessing complete. Saved as 'air_quality_processed.csv'")
