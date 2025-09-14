@@ -1,18 +1,18 @@
 #Week 1
-#Import Libraries
+#Importing Libraries
 import pandas as pd
 
-# Load the dataset
+# Loading the dataset
 file_path = "world_air_quality.csv"   # <-- change to your path if needed
 df = pd.read_csv(file_path, sep=";", on_bad_lines="skip")
 
-# Check structure
+# Checking structure
 print("Columns in dataset:\n", df.columns)
 print("\nFirst 5 rows:\n", df.head())
 
 # ------------------------------------------------------------
 
-#Pivot pollutants into columns
+#Pivoting pollutants into columns
 df_pivot = df.pivot_table(
     index=["Country Code", "City", "Location", "Coordinates", "Last Updated"],
     columns="Pollutant",
@@ -24,7 +24,7 @@ print("\nDataset after pivoting:\n", df_pivot.head())
 
 # ------------------------------------------------------------
 
-#Create AQI category based on PM2.5 values
+#Creating AQI category based on PM2.5 values
 def categorize_air_quality(pm25):
     if pd.isna(pm25):
         return "Unknown"
@@ -50,7 +50,7 @@ print("\nDataset with AQI Category:\n", df_pivot[["City", "PM2.5", "AQI_Category
 
 # ------------------------------------------------------------
 
-#Save processed dataset
+#Saving processed dataset
 df_pivot.to_csv("air_quality_processed.csv", index=False)
 print("\n Preprocessing complete. Saved as 'air_quality_processed.csv'")
 
@@ -66,10 +66,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 import numpy as np
 
-# Check missing values
+# Checking missing values
 print("\nMissing values in dataset:\n", df_pivot.isnull().sum())
 
-# Fill missing values with median (safer than mean)
+# Filling missing values with median (safer than mean)
 df_pivot.fillna(df_pivot.median(numeric_only=True), inplace=True)
 
 # Distribution of PM2.5
@@ -97,7 +97,7 @@ plt.show()
 # =========================================================
 # STEP 6: Feature Engineering
 # =========================================================
-# Select feature columns (pollutants only)
+# Selecting feature columns (pollutants only)
 pollutants = ["PM2.5", "PM10", "NO2", "O3", "CO", "SO2"]
 X = df_pivot[pollutants]
 
@@ -113,13 +113,13 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_
 # =========================================================
 
 # Logistic Regression
-log_reg = LogisticRegression(max_iter=200)
+log_reg = LogisticRegression(max_iter=1000, solver='lbfgs')
 log_reg.fit(X_train, y_train)
 y_pred_log = log_reg.predict(X_test)
 
 print("\n--- Logistic Regression Results ---")
 print("Accuracy:", accuracy_score(y_test, y_pred_log))
-print("Classification Report:\n", classification_report(y_test, y_pred_log, target_names=le.classes_))
+print("Classification Report:\n", classification_report(y_test, y_pred_log, target_names=le.classes_, zero_division=0))
 
 # Decision Tree
 dt = DecisionTreeClassifier(max_depth=5, random_state=42)
@@ -138,4 +138,97 @@ plt.title("Confusion Matrix (Decision Tree)")
 plt.xlabel("Predicted")
 plt.ylabel("Actual")
 plt.show()
+
+#Week 3
+# =========================================================
+# STEP 8: Advanced Models
+# =========================================================
+from sklearn.ensemble import RandomForestClassifier
+
+# Random Forest
+rf = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42)
+rf.fit(X_train, y_train)
+y_pred_rf = rf.predict(X_test)
+
+print("\n--- Random Forest Results ---")
+print("Accuracy:", accuracy_score(y_test, y_pred_rf))
+print("Classification Report:\n", classification_report(y_test, y_pred_rf, target_names=le.classes_))
+
+
+# =========================================================
+# STEP 9: Hyperparameter Tuning
+# =========================================================
+from sklearn.model_selection import GridSearchCV
+
+param_grid = {
+    'n_estimators': [100, 200],
+    'max_depth': [10, 20, None],
+    'min_samples_split': [2, 5]
+}
+
+grid = GridSearchCV(RandomForestClassifier(random_state=42),
+                    param_grid, cv=3, scoring='accuracy', n_jobs=-1)
+grid.fit(X_train, y_train)
+
+print("\n--- Best Random Forest Model ---")
+print("Best Params:", grid.best_params_)
+print("Best CV Accuracy:", grid.best_score_)
+
+best_rf = grid.best_estimator_
+y_pred_best = best_rf.predict(X_test)
+
+print("Tuned RF Accuracy:", accuracy_score(y_test, y_pred_best))
+
+
+# =========================================================
+# STEP 10: Feature Importance
+# =========================================================
+
+
+importances = best_rf.feature_importances_
+indices = np.argsort(importances)[::-1]
+plt.figure(figsize=(10,5))
+plt.title("Feature Importance (Random Forest)")
+plt.bar(range(X.shape[1]), importances[indices], align="center")
+plt.xticks(range(X.shape[1]), X.columns[indices], rotation=90)
+plt.show()
+
+
+# =========================================================
+# STEP 11: Saving the Model
+# =========================================================
+import joblib
+
+joblib.dump(best_rf, "air_quality_model.pkl")
+print("\n Final model saved as 'air_quality_model.pkl'")
+
+# =========================================================
+# STEP 12: Predicting Air Quality with User Input
+# =========================================================
+
+import joblib
+
+# Loading the saved model & label encoder
+best_rf = joblib.load("air_quality_model.pkl")
+
+def predict_air_quality(pm25, pm10, no2, co, o3, so2):
+    new_data = pd.DataFrame([[pm25, pm10, no2, co, o3, so2]],
+                            columns=X.columns)
+    prediction = best_rf.predict(new_data)
+    predicted_label = le.inverse_transform(prediction)
+    return predicted_label[0]
+
+print("\n--- Air Quality Prediction System ---")
+
+# Asking user for input
+pm25 = float(input("Enter PM2.5 value: "))
+pm10 = float(input("Enter PM10 value: "))
+no2 = float(input("Enter NO2 value: "))
+co   = float(input("Enter CO value: "))
+o3   = float(input("Enter O3 value: "))
+so2  = float(input("Enter SO2 value: "))
+
+# Predict and show result
+result = predict_air_quality(pm25, pm10, no2, co, o3, so2)
+print("\n Predicted Air Quality Category:", result)
 
